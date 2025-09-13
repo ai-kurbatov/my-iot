@@ -16,7 +16,7 @@ main light and night light for depending on time of the day.**/
 const int NAPT = 1000;
 const int NAPT_PORT = 10;
 const int TZ_OFFSET_SEC = 3 * 60 * 60;
-const int TIME_UPDATE_INTERVAL_MS = 24 * 60 * 1000;
+const unsigned long TIME_UPDATE_INTERVAL_MS = 24 * 60 * 1000;
 
 const int LED_PIN = D1;
 const int MAIN_LIGHT_PIN = D2;
