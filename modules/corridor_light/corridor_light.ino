@@ -1,3 +1,6 @@
+/**Implements a module for a hallway. It has two move sensors and which control 
+main light and night light for depending on time of the day.**/
+
 #include <ESP8266WiFi.h>
 #include <lwip/napt.h>
 #include <lwip/dns.h>
@@ -6,7 +9,7 @@
 #include "WiFiUdp.h"
 #include <ESP8266WebServer.h>
 
-#include "secrets.h" // const char WIFI_NAME[] = ..., PASSWORD[] = ...
+#include "secrets.hpp" // const char WIFI_NAME[] = ..., WIFI_PASSWORD[] = ...
 
 #define DEBUG 0
 
@@ -95,8 +98,8 @@ void init_wifi() {
   delay(100);
   // first, connect to STA so we can get a proper local DNS server
   WiFi.mode(WIFI_STA);
-  int max_timeout = 100 * 1000;
-  WiFi.begin(WIFI_NAME, PASSWORD);
+  const unsigned long max_timeout = 100 * 1000;
+  WiFi.begin(WIFI_NAME, WIFI_PASSWORD);
   while (WiFi.status() != WL_CONNECTED && millis() < max_timeout) {
     delay(100);
   }
@@ -120,7 +123,7 @@ void init_wifi() {
     ret = ip_napt_enable_no(SOFTAP_IF, 1);
   }
 
-  Serial.print("\Wi-Fi init finished, IP: ");
+  Serial.print("\nWi-Fi init finished, IP: ");
   Serial.println(WiFi.localIP());
 }
 
@@ -175,10 +178,10 @@ void set_light_state(bool is_movement_detected) {
   bool is_light_finished = now > be_on_up_to;
 
   // State have not changed
-  if (IS_CURRENTLY_TURNED_ON && is_movement_detected
-      || !IS_CURRENTLY_TURNED_ON && !is_movement_detected
-      || !is_light_finished && IS_CURRENTLY_TURNED_ON
-      || is_light_finished && !IS_CURRENTLY_TURNED_ON)
+  if ((IS_CURRENTLY_TURNED_ON && is_movement_detected)
+      || (!IS_CURRENTLY_TURNED_ON && !is_movement_detected)
+      || (!is_light_finished && IS_CURRENTLY_TURNED_ON)
+      || (is_light_finished && !IS_CURRENTLY_TURNED_ON))
       return;
   
   IS_CURRENTLY_TURNED_ON = is_movement_detected;

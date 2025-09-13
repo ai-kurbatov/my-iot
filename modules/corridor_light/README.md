@@ -7,3 +7,6 @@ Pinout:
 - D6 - output of the second motion sensor
 - VIN - 5V from phone charger
 - GND - GND from the same charger
+
+Dependences:
+- NTPClient 3.2.1
