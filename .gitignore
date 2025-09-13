@@ -1,2 +1,5 @@
 libraries/
 
+modules/**/secrets.hpp
+modules/**/module_template.hpp
+
