@@ -21,10 +21,8 @@ Upload your new firmware. DON'T FORGET to add OTA support to the new firmware fo
 /**==API==**/
 
 // Define BEFORE includeing this file, to set module name
-// # define MODULE_HOSTNAME ""
+// #define MODULE_HOSTNAME ""
 
-/// When true, module starts to wait for firmware update for 120 seconds
-bool IS_FIRMWARE_UPDATE_MODE = false;
 /// HTTP server
 ESP8266WebServer SERVER(80);
 
@@ -38,6 +36,8 @@ void loop_module();
 namespace module_template_impl {
 
 const int UPLOAD_FIRMWARE_PORT = 8266;
+// When true, module starts to wait for firmware update for 120 seconds
+bool IS_FIRMWARE_UPDATE_MODE = false;
 // Wait for firmware for this amount of time
 constexpr unsigned long FIRMWARE_MODE_DURATION_MS = 120 * 1000;
 

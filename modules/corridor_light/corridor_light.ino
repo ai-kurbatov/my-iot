@@ -9,7 +9,8 @@ main light and night light for depending on time of the day.**/
 #include "WiFiUdp.h"
 #include <ESP8266WebServer.h>
 
-#include "secrets.hpp" // const char WIFI_NAME[] = ..., WIFI_PASSWORD[] = ...
+#define MODULE_HOSTNAME "corridor-light"
+#include "module_template.hpp"
 
 #define DEBUG 0
 
@@ -41,10 +42,7 @@ int LIGHT_TIME_S = 60;
 
 WiFiUDP NTP_UDP;
 NTPClient TIME_CLIENT(NTP_UDP, "pool.ntp.org", TZ_OFFSET_SEC, TIME_UPDATE_INTERVAL_MS);
-ESP8266WebServer SERVER(80);
 
-void(* reset_device) (void) = 0;
-void init_wifi();
 void init_time_server();
 void init_light();
 void init_http_server();
@@ -68,90 +66,45 @@ String get_uptime_str();
 String get_formatted_time(int days, int hours, int minutes, int seconds);
 String get_current_params();
 
-void setup() {
-  Serial.begin(115200);
-
-  init_wifi();
+void setup_module() {
+  init_http_server();
   init_time_server();
   init_light();
-  init_http_server();
   
   pinMode(LED_PIN, OUTPUT);
   pinMode(MAIN_LIGHT_PIN, OUTPUT);
   pinMode(SENSOR_1_PIN, INPUT_PULLUP);
   pinMode(SENSOR_2_PIN, INPUT_PULLUP);
-  Serial.println("Init finished");
   
   #if DEBUG
     Serial.println(String("Sensor_1,Sensor_2,x\n"));
   #endif
 }
 
-void loop() {
+void loop_module() {
   TIME_CLIENT.update();
-  SERVER.handleClient();
 
   set_light_state(is_movement_detected());
-}
-
-void init_wifi() {
-  delay(100);
-  // first, connect to STA so we can get a proper local DNS server
-  WiFi.mode(WIFI_STA);
-  const unsigned long max_timeout = 100 * 1000;
-  WiFi.begin(WIFI_NAME, WIFI_PASSWORD);
-  while (WiFi.status() != WL_CONNECTED && millis() < max_timeout) {
-    delay(100);
-  }
-  if (WiFi.status() != WL_CONNECTED) {
-    Serial.printf("WiFi.Status(): %d\n", WiFi.status());
-    reset_device();
-  }
-
-  // give DNS servers to AP side
-  dhcps_set_dns(0, WiFi.dnsIP(0));
-  dhcps_set_dns(1, WiFi.dnsIP(1));
-
-  WiFi.softAPConfig(  // enable AP, with android-compatible google domain
-    IPAddress(172, 217, 28, 254),
-    IPAddress(172, 217, 28, 254),
-    IPAddress(255, 255, 255, 0));
-
-
-  err_t ret = ip_napt_init(NAPT, NAPT_PORT);
-  if (ret == ERR_OK) {
-    ret = ip_napt_enable_no(SOFTAP_IF, 1);
-  }
-
-  Serial.print("\nWi-Fi init finished, IP: ");
-  Serial.println(WiFi.localIP());
 }
 
 void init_time_server() {
   TIME_CLIENT.begin();
   TIME_CLIENT.forceUpdate();
-  if (TIME_CLIENT.getEpochTime() < 1604143340) {
-    Serial.println("Resetting because of time bug");
-    reset_device();
-  }
-  Serial.println("Time server init finished");
+
+  Serial.println("Time server init finished.");
 }
 
 void init_light() {
   set_main_light_state(false);
   set_led_state(false);
   IS_CURRENTLY_TURNED_ON = false;
-  Serial.println("Light init finished");
+  Serial.println("Light init finished.");
 }
 
 void init_http_server() {
   SERVER.on("/", HTTP_GET, handle_root);
   SERVER.on("/set", HTTP_ANY, handle_set);
-  SERVER.on("/reset", HTTP_ANY, handle_reset);
-  
-  SERVER.onNotFound(handle_not_found);
-  SERVER.begin();
-  Serial.println("HTTP init finished");
+  Serial.println("Module HTTP server init finished.");
 }
 
 bool is_movement_detected() {
@@ -267,10 +220,6 @@ void handle_root() {
   SERVER.send(200, "text/plain", page);
 }
 
-void handle_reset() {
-  reset_device();
-}
-
 String get_uptime_str() {
   const unsigned long now_s = millis() / 1000UL;
   const unsigned long seconds = now_s % 60UL;
@@ -309,12 +258,6 @@ void handle_set() {
   SERVER.send(200, "text/html", page);
 }
 
-void handle_not_found() {
-  String page = ("404: Not Found"
-    "\nURI: " + SERVER.uri()
-  );
-  SERVER.send(404, "text/plain", page);
-}
 
 bool set_arg_if_passed(const String& arg_name, int& param) {
   if (!SERVER.hasArg(arg_name))
