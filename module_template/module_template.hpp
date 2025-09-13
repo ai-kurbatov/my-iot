@@ -16,6 +16,7 @@ Upload your new firmware. DON'T FORGET to add OTA support to the new firmware fo
 #include <ArduinoOTA.h>
 #include <ESP8266WebServer.h>
 
+#include "parameters.hpp"
 #include "secrets.hpp"
 
 /**==API==**/
@@ -25,11 +26,34 @@ Upload your new firmware. DON'T FORGET to add OTA support to the new firmware fo
 
 /// HTTP server
 ESP8266WebServer SERVER(80);
+/*
+Provides some default URI handling:
+  /settings - use paramters to set values to SETTINGS. Redirects to /state
+  /state - get current STATE and SETTINGS
+  /firmware_update - start firmware update mode. The divice will wait for update for 120 seconds
+  /reset - reset the device
+*/
 
-/// Implement this instead of steup() in concrete module
+// Use these to sotre current state and settings. 
+// Save indexes from .add() and update values with [] 
+/// Current system state variables
+Parameters STATE;
+/// Settings
+Parameters SETTINGS;
+
+// This functiouns MUST be implemented in a concrete emoudule
+/// Implement this instead of steup() in the module
 void setup_module();
-/// Implement this instead of loop() in concrete module
+/// Implement this instead of loop() in the module
 void loop_module();
+// Update values in STATE variable. Leave empty if not needed.
+// This is only for the ones that have not been (or cannot be) updated in other places.
+// Like current time, value from input pins, etc. 
+void force_update_state_module();
+
+// Some common utility functions
+// Get time as String like "69 days 16:42:34"
+String get_formatted_time(int days, int hours, int minutes, int seconds);
 
 /**==Implementation==**/
 
@@ -41,16 +65,24 @@ bool IS_FIRMWARE_UPDATE_MODE = false;
 // Wait for firmware for this amount of time
 constexpr unsigned long FIRMWARE_MODE_DURATION_MS = 120 * 1000;
 
+/*STATE indexes*/
+size_t UPTIME_ST = -1;
+
 void init_wifi();
 void init_ota();
 void init_http_server();
+void init_state();
 
+void handle_state();
 void handle_firmware_update();
 void handle_not_found();
 void handle_reset();
 
 void update_firmware_if_needed();
 void process_ota_error(ota_error_t error);
+// Update STATE variable to current values
+void force_update_state();
+String get_uptime_str();
 
 void setup() {
   Serial.begin(115200);
@@ -59,6 +91,7 @@ void setup() {
   init_wifi();
   init_ota();
   init_http_server();
+  init_state();
 
   setup_module();
 
@@ -124,15 +157,27 @@ void init_ota() {
   Serial.println("OTA init finished.");
 }
 
+void init_state() {
+  STATE.add("Firmware update", {String(__DATE__) + " " + __TIME__});
+  UPTIME_ST = STATE.add("Uptime", {""});
+}
+
 void init_http_server() {
   Serial.println("HTTP server init started...");
 
+  SERVER.on("/state", HTTP_GET, handle_state);
   SERVER.on("/firmware_update", HTTP_ANY, handle_firmware_update);
   SERVER.on("/reset", HTTP_ANY, handle_reset);
   SERVER.onNotFound(handle_not_found);
   SERVER.begin();
 
   Serial.println("HTTP server init finished.");
+}
+
+void handle_state() {
+  force_update_state();
+  String payload = String("{\"State\":") + STATE.to_json() + ",\"Settings\":" + SETTINGS.to_json() + "}";
+  SERVER.send(200, "application/json", payload);
 }
 
 void handle_not_found() {
@@ -186,6 +231,29 @@ void process_ota_error(ota_error_t error) {
   } 
 }
 
+void force_update_state() {
+  STATE[UPTIME_ST] = get_uptime_str();
+
+  force_update_state_module();
+}
+
+String get_uptime_str() {
+  const unsigned long now_s = millis() / 1000UL;
+  const unsigned long seconds = now_s % 60UL;
+  const unsigned long minutes = now_s / 60UL % 60UL;
+  const unsigned long hours = now_s / 3600UL % 24UL;
+  const unsigned long days = now_s / 86400UL;
+  return get_formatted_time(days, hours, minutes, seconds);
+}
+
+}
+
+String get_formatted_time(int days, int hours, int minutes, int seconds) {
+  String days_s = days > 0 ? days + String(" days ") : String("");
+  String hours_s = hours >= 10 ? String(hours) : "0" + String(hours);
+  String minutes_s = minutes >= 10 ? String(minutes) : "0" + String(minutes);
+  String seconds_s = seconds >= 10 ? String(seconds) : "0" + String(seconds);
+  return days_s + hours_s + String(":") + minutes_s + String(":") + seconds_s;
 }
 
 /// Don't use setup() in actual module. Use setup_module() instead!

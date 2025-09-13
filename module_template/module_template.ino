@@ -17,3 +17,5 @@ void loop_module() {
   delay(500);
   digitalWrite(LED_BUILTIN, LOW);
 }
+
+void force_update_state_module() {}
