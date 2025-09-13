@@ -14,9 +14,9 @@ Upload your new firmware. DON'T FORGET to add OTA support to the new firmware fo
 #include <ESP8266mDNS.h>
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
+#include <ESP8266WebServer.h>
 
 #include "secrets.hpp"
-#include <ESP8266WebServer.h>
 
 /**==API==**/
 
