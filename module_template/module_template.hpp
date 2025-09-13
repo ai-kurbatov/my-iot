@@ -1,4 +1,4 @@
-/** Contains base for all modules: over the air (OTA) update support, web-server
+/** Contains a base for all modules: over the air (OTA) update support, web-server
 
 Usage:
 Send HTTP POST or GET request, to make the device go to firmware update mode for 120 seconds.
