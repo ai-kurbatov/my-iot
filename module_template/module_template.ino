@@ -22,12 +22,12 @@ void setup_module() {
 }
 
 void loop_module() {
-  delay(SETTINGS[BLINKING_INTERVAL_SE].asInt());
+  delay(SETTINGS[BLINKING_INTERVAL_SE].as_int());
   digitalWrite(LED_BUILTIN, HIGH);
-  delay(SETTINGS[BLINKING_INTERVAL_SE].asInt());
+  delay(SETTINGS[BLINKING_INTERVAL_SE].as_int());
   digitalWrite(LED_BUILTIN, LOW);
 
-  STATE[SWITCH_COUNT_ST] = STATE[SWITCH_COUNT_ST].asInt() + 1;
+  STATE[SWITCH_COUNT_ST] = STATE[SWITCH_COUNT_ST].as_int() + 1;
 }
 
 void force_update_state_module() {

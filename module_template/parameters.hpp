@@ -42,7 +42,7 @@ public:
     if (idx < 0) return;               // no such parameter
 
     ParameterValue &pv = items[idx].second;
-    switch (pv.getType()) {
+    switch (pv.get_type()) {
       case ParameterValue::TYPE_INT: {
         // parse integer with detection of valid conversion
         // use strtol on a c-string and ensure entire string (except leading/trailing spaces) is consumed
@@ -58,7 +58,7 @@ public:
         if (*endptr != '\0') return; // leftover -> invalid
         // optional: check range for int
         if (val < INT_MIN || val > INT_MAX) return;
-        pv.setInt((int)val);
+        pv.set_int((int)val);
         break;
       }
 
@@ -68,9 +68,9 @@ public:
         s.trim();
         s.toLowerCase();
         if (s == "1" || s == "true" || s == "on" || s == "yes") {
-          pv.setBool(true);
+          pv.set_bool(true);
         } else if (s == "0" || s == "false" || s == "off" || s == "no") {
-          pv.setBool(false);
+          pv.set_bool(false);
         } else {
           // not recognized -> do nothing
         }
@@ -79,7 +79,7 @@ public:
 
       case ParameterValue::TYPE_STRING: {
         // always succeeds: set string directly
-        pv.setString(valueStr);
+        pv.set_string(valueStr);
         break;
       }
 
@@ -136,10 +136,10 @@ public:
       json += "\":";
       // value by type
       const ParameterValue &pv = items[i].second;
-      switch (pv.getType()) {
+      switch (pv.get_type()) {
         case ParameterValue::TYPE_INT: {
           bool ok;
-          int v = pv.asInt(ok);
+          int v = pv.as_int(ok);
           if (!ok) json += "null";
           else {
             char buf[16];
@@ -150,13 +150,13 @@ public:
         }
         case ParameterValue::TYPE_BOOL: {
           bool ok;
-          bool v = pv.asBool(ok);
+          bool v = pv.as_bool(ok);
           json += (ok && v) ? "true" : (ok ? "false" : "null");
           break;
         }
         case ParameterValue::TYPE_STRING: {
           bool ok;
-          String v = pv.asString(ok);
+          String v = pv.as_string(ok);
           if (!ok) json += "null";
           else {
             json += "\"";

@@ -10,38 +10,38 @@ public:
   ParameterValue(const String &v) : type(TYPE_STRING), intValue(0), boolValue(false), strValue(v) {}
   ParameterValue(const char *v) : type(TYPE_STRING), intValue(0), boolValue(false), strValue(v) {}
 
-  Type getType() const { return type; }
+  Type get_type() const { return type; }
 
   // getters with simple validity checks
-  int asInt(bool &ok) const {
+  int as_int(bool &ok) const {
     ok = (type == TYPE_INT);
     return ok ? intValue : 0;
   }
-  int asInt() const {
+  int as_int() const {
     assert(type == TYPE_INT);
     return intValue;
   }
-  bool asBool(bool &ok) const {
+  bool as_bool(bool &ok) const {
     ok = (type == TYPE_BOOL);
     return ok ? boolValue : false;
   }
-  bool asBool() const {
+  bool as_bool() const {
     assert(type == TYPE_BOOL);
     return boolValue;
   }
-  String asString(bool &ok) const {
+  String as_string(bool &ok) const {
     ok = (type == TYPE_STRING);
     return ok ? strValue : String();
   }
-  String asString() const {
+  String as_string() const {
     assert(type == TYPE_STRING);
     return strValue;
   }
 
   // setters
-  void setInt(int v) { clear(); type = TYPE_INT; intValue = v; }
-  void setBool(bool v) { clear(); type = TYPE_BOOL; boolValue = v; }
-  void setString(const String &v) { clear(); type = TYPE_STRING; strValue = v; }
+  void set_int(int v) { clear(); type = TYPE_INT; intValue = v; }
+  void set_bool(bool v) { clear(); type = TYPE_BOOL; boolValue = v; }
+  void set_string(const String &v) { clear(); type = TYPE_STRING; strValue = v; }
 
 private:
   void clear() {
