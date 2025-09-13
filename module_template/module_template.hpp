@@ -77,6 +77,7 @@ void handle_state();
 void handle_firmware_update();
 void handle_not_found();
 void handle_reset();
+void handle_settings();
 
 void update_firmware_if_needed();
 void process_ota_error(ota_error_t error);
@@ -165,6 +166,7 @@ void init_state() {
 void init_http_server() {
   Serial.println("HTTP server init started...");
 
+  SERVER.on("/settings", HTTP_GET, handle_settings);
   SERVER.on("/state", HTTP_GET, handle_state);
   SERVER.on("/firmware_update", HTTP_ANY, handle_firmware_update);
   SERVER.on("/reset", HTTP_ANY, handle_reset);
@@ -194,6 +196,17 @@ void handle_reset() {
 void handle_firmware_update() {
   IS_FIRMWARE_UPDATE_MODE = true;
   SERVER.send(200, "text/plain", "Firmware update mode started...");
+}
+
+void handle_settings() {
+  const size_t args_sz = SERVER.args();
+  // Updates paramter only if it already exists in SETTINGS
+  for (size_t i = 0; i < args_sz; ++i) {
+    SETTINGS.try_set_from_str(SERVER.argName(i), SERVER.arg(i));
+  }
+  // redirect to /state
+  String page = String("<head><meta http-equiv=\"refresh\" content=\"0; url=/state\"></head>");
+  SERVER.send(200, "text/html", page);
 }
 
 void update_firmware_if_needed() {

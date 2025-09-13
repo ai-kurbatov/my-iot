@@ -17,13 +17,25 @@ public:
     ok = (type == TYPE_INT);
     return ok ? intValue : 0;
   }
+  int asInt() const {
+    assert(type == TYPE_INT);
+    return intValue;
+  }
   bool asBool(bool &ok) const {
     ok = (type == TYPE_BOOL);
     return ok ? boolValue : false;
   }
+  bool asBool() const {
+    assert(type == TYPE_BOOL);
+    return boolValue;
+  }
   String asString(bool &ok) const {
     ok = (type == TYPE_STRING);
     return ok ? strValue : String();
+  }
+  String asString() const {
+    assert(type == TYPE_STRING);
+    return strValue;
   }
 
   // setters
@@ -31,7 +43,6 @@ public:
   void setBool(bool v) { clear(); type = TYPE_BOOL; boolValue = v; }
   void setString(const String &v) { clear(); type = TYPE_STRING; strValue = v; }
 
-  // copy and assignment handled by default (String copies correctly)
 private:
   void clear() {
     // For now only String needs explicit clear — but using String's assignment handles it.

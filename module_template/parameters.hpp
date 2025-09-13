@@ -36,6 +36,59 @@ public:
       items[idx].second = value;
   }
 
+  // try to set parameter by name from a String; do nothing on missing name or conversion failure
+  void try_set_from_str(const String &name, const String &valueStr) {
+    int idx = index_of(name);
+    if (idx < 0) return;               // no such parameter
+
+    ParameterValue &pv = items[idx].second;
+    switch (pv.getType()) {
+      case ParameterValue::TYPE_INT: {
+        // parse integer with detection of valid conversion
+        // use strtol on a c-string and ensure entire string (except leading/trailing spaces) is consumed
+        const char *s = valueStr.c_str();
+        // skip leading spaces
+        while (*s == ' ' || *s == '\t') ++s;
+        if (*s == '\0') return; // empty -> fail
+
+        char *endptr = nullptr;
+        long val = strtol(s, &endptr, 0); // allow 0x, 0 prefix
+        // skip trailing spaces
+        while (*endptr == ' ' || *endptr == '\t') ++endptr;
+        if (*endptr != '\0') return; // leftover -> invalid
+        // optional: check range for int
+        if (val < INT_MIN || val > INT_MAX) return;
+        pv.setInt((int)val);
+        break;
+      }
+
+      case ParameterValue::TYPE_BOOL: {
+        // accept: "1","0","true","false","on","off","yes","no" (case-insensitive), with optional surrounding spaces
+        String s = valueStr;
+        s.trim();
+        s.toLowerCase();
+        if (s == "1" || s == "true" || s == "on" || s == "yes") {
+          pv.setBool(true);
+        } else if (s == "0" || s == "false" || s == "off" || s == "no") {
+          pv.setBool(false);
+        } else {
+          // not recognized -> do nothing
+        }
+        break;
+      }
+
+      case ParameterValue::TYPE_STRING: {
+        // always succeeds: set string directly
+        pv.setString(valueStr);
+        break;
+      }
+
+      case ParameterValue::TYPE_NONE:
+      default:
+        // cannot convert -> do nothing
+        break;
+    }
+  }
 
   /// check existence
   bool has(const String &name) const {
