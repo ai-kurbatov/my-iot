@@ -5,9 +5,8 @@ main light and night light for depending on time of the day.**/
 #include <lwip/napt.h>
 #include <lwip/dns.h>
 #include <dhcpserver.h>
-#include "NTPClient.h"
-#include "WiFiUdp.h"
-#include <ESP8266WebServer.h>
+#include <NTPClient.h>
+#include <WiFiUdp.h>
 
 #define MODULE_HOSTNAME "corridor-light"
 #include "module_template.hpp"
@@ -35,8 +34,8 @@ bool IS_FORCE_TURN_ON = false;
 int NIGHT_MODE_BEGIN_H = 23;
 int NIGHT_MODE_BEGIN_M = 0;
 // to this time
-int NIGHT_MODE_END_H = 9;
-int NIGHT_MODE_END_M = 0;
+int NIGHT_MODE_END_H = 8;
+int NIGHT_MODE_END_M = 30;
 // Light stays turned on for this amount of time after a movement being detected
 int LIGHT_TIME_S = 60;
 
