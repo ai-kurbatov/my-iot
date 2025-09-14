@@ -58,7 +58,7 @@ public:
         if (*endptr != '\0') return; // leftover -> invalid
         // optional: check range for int
         if (val < INT_MIN || val > INT_MAX) return;
-        pv.set_int((int)val);
+        pv.set_int(static_cast<int>(val));
         break;
       }
 

@@ -202,6 +202,7 @@ void handle_settings() {
   const size_t args_sz = SERVER.args();
   // Updates paramter only if it already exists in SETTINGS
   for (size_t i = 0; i < args_sz; ++i) {
+    // Arg names are CASE SENSITIVE!
     SETTINGS.try_set_from_str(SERVER.argName(i), SERVER.arg(i));
   }
   // redirect to /state
