@@ -11,7 +11,13 @@ main light and night light for depending on time of the day.**/
 #define MODULE_HOSTNAME "corridor-light"
 #include "module_template.hpp"
 
-#define DEBUG 0
+#define DEBUG 1
+
+enum Mode {
+  AUTO, // Control light by motion sensors
+  FORCE_ON, // Always on
+  FORCE_OFF // Always off
+};
 
 const int NAPT = 1000;
 const int NAPT_PORT = 10;
@@ -23,28 +29,32 @@ const int MAIN_LIGHT_PIN = D2;
 const int SENSOR_1_PIN = D5;
 const int SENSOR_2_PIN = D6;
 
-// Current light state
-bool IS_CURRENTLY_TURNED_ON = false;
-
-// If true, disable auto mode, turn off any light
-bool IS_FORCE_TURN_OFF = false;
-// If true, disable auto mode, turn on main light
-bool IS_FORCE_TURN_ON = false;
+/* SETTINGS indexes */
+size_t se_SENSOR_LATENCY_MS = -1;
+size_t se_MODE = -1;
 // Use led instead of main light from this time
-int NIGHT_MODE_BEGIN_H = 23;
-int NIGHT_MODE_BEGIN_M = 0;
+size_t se_NIGHT_MODE_BEGIN_H = -1;
+size_t se_NIGHT_MODE_BEGIN_M = -1;
 // to this time
-int NIGHT_MODE_END_H = 8;
-int NIGHT_MODE_END_M = 30;
-// Light stays turned on for this amount of time after a movement being detected
-int LIGHT_TIME_S = 10;
+size_t se_NIGHT_MODE_END_H = -1;
+size_t se_NIGHT_MODE_END_M = -1;
+  // Light stays turned on for this amount of time after a movement being detected
+size_t se_LIGHT_TIME_S = -1;
 
-// SETTINGS indexes
-size_t SENSOR_LATENCY_S = -1;
+/* STATE indexes */
+// Current light state
+size_t st_IS_CURRENTLY_TURNED_ON = -1;
+size_t st_SENSOR_1_STATE = -1;
+size_t st_SENSOR_2_STATE = -1;
+size_t st_IS_NIGHT_MODE = -1;
+// Current time string. Updates only on /settings request
+size_t st_TIME = -1;
 
 WiFiUDP NTP_UDP;
 NTPClient TIME_CLIENT(NTP_UDP, "pool.ntp.org", TZ_OFFSET_SEC, TIME_UPDATE_INTERVAL_MS);
 
+void init_settings();
+void init_state();
 void init_time_server();
 void init_light();
 void init_http_server();
@@ -60,15 +70,12 @@ void set_force_light();
 
 void handle_root();
 void handle_not_found();
-void handle_set();
 void handle_reset();
-bool set_arg_if_passed(const String& arg_name, int& param);
-bool set_arg_if_passed(const String& arg_name, bool& param);
-String get_uptime_str();
 String get_formatted_time(int days, int hours, int minutes, int seconds);
-String get_current_params();
 
 void setup_module() {
+  init_settings();
+  init_state();
   init_http_server();
   init_time_server();
   init_light();
@@ -77,8 +84,6 @@ void setup_module() {
   pinMode(MAIN_LIGHT_PIN, OUTPUT);
   pinMode(SENSOR_1_PIN, INPUT_PULLUP);
   pinMode(SENSOR_2_PIN, INPUT_PULLUP);
-
-  SENSOR_LATENCY_S = SETTINGS.add("Sensor latency (ms)", 500);
   
   #if DEBUG
     Serial.println(String("Sensor_1,Sensor_2,x\n"));
@@ -91,7 +96,36 @@ void loop_module() {
   set_light_state(is_movement_detected());
 }
 
-void force_update_state_module() {}
+void force_update_state_module() {
+  STATE[st_SENSOR_1_STATE] = static_cast<bool>(digitalRead(SENSOR_1_PIN));
+  STATE[st_SENSOR_2_STATE] = static_cast<bool>(digitalRead(SENSOR_2_PIN));
+  STATE[st_IS_NIGHT_MODE] = is_night_mode();
+  STATE[st_TIME] = String("") + TIME_CLIENT.getFormattedTime() + " (" + TIME_CLIENT.getEpochTime() + ")";
+}
+
+void init_settings() {
+  se_MODE = SETTINGS.add("Mode", Mode::AUTO);
+  se_SENSOR_LATENCY_MS = SETTINGS.add("Sensor latency (ms)", 500);
+  se_NIGHT_MODE_BEGIN_H = SETTINGS.add("Night mode begin, h", 23);
+  se_NIGHT_MODE_BEGIN_M = SETTINGS.add("Night mode begin, m", 0);
+  se_NIGHT_MODE_END_H = SETTINGS.add("Night mode end, h", 8);
+  se_NIGHT_MODE_END_M = SETTINGS.add("Night mode end, m", 0);
+  se_LIGHT_TIME_S = SETTINGS.add("Light time, s",
+    #if DEBUG
+      10
+    #else
+      60
+    #endif
+  );
+}
+
+void init_state() {
+  st_TIME = STATE.add("Time", {});
+  st_IS_CURRENTLY_TURNED_ON = STATE.add("Lights state", false);
+  st_IS_NIGHT_MODE = STATE.add("Night mode", false);
+  st_SENSOR_1_STATE = STATE.add("Sensor 1", false);
+  st_SENSOR_2_STATE = STATE.add("Sensor 2", false);
+}
 
 void init_time_server() {
   TIME_CLIENT.begin();
@@ -103,13 +137,12 @@ void init_time_server() {
 void init_light() {
   set_main_light_state(false);
   set_led_state(false);
-  IS_CURRENTLY_TURNED_ON = false;
+  STATE[st_IS_CURRENTLY_TURNED_ON] = false;
   Serial.println("Light init finished.");
 }
 
 void init_http_server() {
   SERVER.on("/", HTTP_GET, handle_root);
-  SERVER.on("/set", HTTP_ANY, handle_set);
   Serial.println("Module HTTP server init finished.");
 }
 
@@ -124,7 +157,7 @@ bool is_movement_detected() {
 
   // Filters out short impulses
   const unsigned long now = millis();
-  const unsigned long next_check = now + SETTINGS[SENSOR_LATENCY_S].as_int();
+  const unsigned long next_check = now + SETTINGS[se_SENSOR_LATENCY_MS].as_int();
   // First check. Movement detection setting timer
   if (!sensor_1_next_check && sensor_1_input) sensor_1_next_check = next_check;
   if (!sensor_2_next_check && sensor_2_input) sensor_2_next_check = next_check;
@@ -147,34 +180,35 @@ bool is_movement_detected() {
 void set_light_state(bool is_movement_detected) {
   static int be_on_up_to = 0;  // The light is turned on to this timestamp
 
-  if (IS_FORCE_TURN_OFF || IS_FORCE_TURN_ON) {
+  if (SETTINGS[se_MODE].as_int() == Mode::FORCE_OFF || SETTINGS[se_MODE].as_int() == Mode::FORCE_ON) {
     set_force_light();
     return;
   }
 
   int now = TIME_CLIENT.getEpochTime();
   if (is_movement_detected)
-    be_on_up_to = now + LIGHT_TIME_S;
+    be_on_up_to = now + SETTINGS[se_LIGHT_TIME_S].as_int();
   
   bool is_light_finished = now > be_on_up_to;
 
   // State have not changed
-  if ((IS_CURRENTLY_TURNED_ON && is_movement_detected)
-      || (!IS_CURRENTLY_TURNED_ON && !is_movement_detected)
-      || (!is_light_finished && IS_CURRENTLY_TURNED_ON)
-      || (is_light_finished && !IS_CURRENTLY_TURNED_ON))
+  if ((STATE[st_IS_CURRENTLY_TURNED_ON].as_bool() && is_movement_detected)
+      || (!STATE[st_IS_CURRENTLY_TURNED_ON].as_bool() && !is_movement_detected)
+      || (!is_light_finished && STATE[st_IS_CURRENTLY_TURNED_ON].as_bool())
+      || (is_light_finished && !STATE[st_IS_CURRENTLY_TURNED_ON].as_bool()))
       return;
   
-  IS_CURRENTLY_TURNED_ON = is_movement_detected;
+  STATE[st_IS_CURRENTLY_TURNED_ON] = is_movement_detected;
 
   // Turn off everything just in case
-  if (!IS_CURRENTLY_TURNED_ON) {
+  if (!STATE[st_IS_CURRENTLY_TURNED_ON].as_bool()) {
     set_led_state(false);
     set_main_light_state(false);
     return;
   }
   // Turn on only one thing, turn off the other
-  if (is_night_mode()) {
+  STATE[st_IS_NIGHT_MODE] = is_night_mode();
+  if (STATE[st_IS_NIGHT_MODE].as_bool()) {
     set_main_light_state(false);
     set_led_state(true);
     return;
@@ -184,22 +218,22 @@ void set_light_state(bool is_movement_detected) {
 }
 
 void set_force_light() {
-  if (IS_FORCE_TURN_OFF && IS_CURRENTLY_TURNED_ON) {
-    IS_CURRENTLY_TURNED_ON = false;
-    set_main_light_state(IS_CURRENTLY_TURNED_ON);
+  if (SETTINGS[se_MODE].as_int() == Mode::FORCE_OFF) {
+    STATE[st_IS_CURRENTLY_TURNED_ON] = false;
+    set_main_light_state(false);
     set_led_state(false);
     return;
   }
-  if (IS_FORCE_TURN_ON && !IS_CURRENTLY_TURNED_ON) {
-    IS_CURRENTLY_TURNED_ON = true;
-    set_main_light_state(IS_CURRENTLY_TURNED_ON);
+  if (SETTINGS[se_MODE].as_int() == Mode::FORCE_ON) {
+    STATE[st_IS_CURRENTLY_TURNED_ON] = true;
+    set_main_light_state(true);
     set_led_state(false);
   }
 }
 
 bool is_night_mode() {
-  const int night_mode_begin = convert_to_minutes(NIGHT_MODE_BEGIN_H, NIGHT_MODE_BEGIN_M);
-  const int night_mode_end = convert_to_minutes(NIGHT_MODE_END_H, NIGHT_MODE_END_M);
+  const int night_mode_begin = convert_to_minutes(SETTINGS[se_NIGHT_MODE_BEGIN_H].as_int(), SETTINGS[se_NIGHT_MODE_BEGIN_M].as_int());
+  const int night_mode_end = convert_to_minutes(SETTINGS[se_NIGHT_MODE_END_H].as_int(), SETTINGS[se_NIGHT_MODE_END_M].as_int());
   const int current_min = convert_to_minutes(TIME_CLIENT.getHours(), TIME_CLIENT.getMinutes());
   return night_mode_begin <= current_min || current_min < night_mode_end;
 }
@@ -220,76 +254,19 @@ int convert_to_minutes(int hours, int minutes) {
   return hours * 60 + minutes;
 }
 
-String get_current_params() {
-  String current_params = (
-    String("Current state:")
-    + "\n  State:              " + (IS_CURRENTLY_TURNED_ON ? String("on") : String("off"))
-    + "\n  Time:               " + TIME_CLIENT.getFormattedTime() + String(" (") + TIME_CLIENT.getEpochTime() + String(")")
-    + "\n  Uptime:             " + get_uptime_str()
-    + "\n  Firmware update:    " + __DATE__ + " " + __TIME__
-    + "\n  Sensor 1 state:     " + digitalRead(SENSOR_1_PIN)
-    + "\n  Sensor 2 state:     " + digitalRead(SENSOR_2_PIN)
-    + "\nSettings:"
-    + "\n  NIGHT_MODE_BEGIN_H: " + NIGHT_MODE_BEGIN_H
-    + "\n  NIGHT_MODE_BEGIN_M: " + NIGHT_MODE_BEGIN_M
-    + "\n  NIGHT_MODE_END_H:   " + NIGHT_MODE_END_H
-    + "\n  NIGHT_MODE_END_M:   " + NIGHT_MODE_END_M
-    + "\n  LIGHT_TIME_S:       " + LIGHT_TIME_S 
-    + "\n  IS_FORCE_TURN_OFF:  " + IS_FORCE_TURN_OFF
-    + "\n  IS_FORCE_TURN_ON:   " + IS_FORCE_TURN_ON
-    + "\n"
-    + "\nUse /set?PARAM_NAME=42 to change it."
-  );
-  return current_params;
-} 
-
 void handle_root() {
-  String page = get_current_params();
-  SERVER.send(200, "text/plain", page);
-}
-
-String get_uptime_str() {
-  const unsigned long now_s = millis() / 1000UL;
-  const unsigned long seconds = now_s % 60UL;
-  const unsigned long minutes = now_s / 60UL % 60UL;
-  const unsigned long hours = now_s / 3600UL % 24UL;
-  const unsigned long days = now_s / 86400UL;
-  return get_formatted_time(days, hours, minutes, seconds);
-}
-
-void handle_set() {
-  set_arg_if_passed("NIGHT_MODE_BEGIN_H", NIGHT_MODE_BEGIN_H);
-  set_arg_if_passed("NIGHT_MODE_BEGIN_M", NIGHT_MODE_BEGIN_M);
-  set_arg_if_passed("NIGHT_MODE_END_H", NIGHT_MODE_END_H);
-  set_arg_if_passed("NIGHT_MODE_END_M", NIGHT_MODE_END_M);
-  set_arg_if_passed("LIGHT_TIME_S", LIGHT_TIME_S);
-  const bool is_force_off_set = set_arg_if_passed("IS_FORCE_TURN_OFF", IS_FORCE_TURN_OFF);
-  if (is_force_off_set && IS_FORCE_TURN_OFF)
-    IS_FORCE_TURN_ON = false;
-  const bool is_force_on_set = set_arg_if_passed("IS_FORCE_TURN_ON", IS_FORCE_TURN_ON);
-  if (is_force_on_set && IS_FORCE_TURN_ON) {
-    IS_FORCE_TURN_OFF = false;
-    // workaround to fix bug, when night light is already on and "force turn on" is pressed
-    IS_CURRENTLY_TURNED_ON = false;
-  }
-
-  // redirect to root
-  String page = String("<head><meta http-equiv=\"refresh\" content=\"0; url=/\"></head>");
+  String page = (
+    String("<!doctype html>")
+    + "<head><style>"
+    + " body{background:#0b0b0c;color:#dcdcdc;}"
+    + " a:link { color: #5fb3ff; } a:visited { color: #3b8ed6; } a { text-decoration: underline; } a:hover, a:focus { color: #1f6fb0; }"
+    + "</style></head><body>"
+    + "It's a " + MODULE_HOSTNAME + " module."
+    + "<p><a href=/state>/state</a> - current system state"
+    + "<p><a href=/settings>/settings</a> - pass parameters to change settings"
+    + "<p><a href=/firmware_update>/firmware_update</a> - to enter firmware update for a few minutes"
+    + "<p><a href=/reset>/reset</a> - reset the device"
+    + "</body></html>");
   SERVER.send(200, "text/html", page);
 }
 
-
-bool set_arg_if_passed(const String& arg_name, int& param) {
-  if (!SERVER.hasArg(arg_name))
-    return false;
-  param = String(SERVER.arg(arg_name)).toInt();
-  return true;
-}
-
-bool set_arg_if_passed(const String& arg_name, bool& param) {
-  int tmp = -1;
-  if (!set_arg_if_passed(arg_name, tmp))
-    return false;
-  param = static_cast<bool>(tmp);
-  return true;
-}

@@ -8,6 +8,7 @@ Upload your new firmware. DON'T FORGET to add OTA support to the new firmware fo
 
 #pragma once
 
+#include <cstddef>
 #include <cstring>
 
 #include <ESP8266WiFi.h>
@@ -65,13 +66,18 @@ bool IS_FIRMWARE_UPDATE_MODE = false;
 // Wait for firmware for this amount of time
 constexpr unsigned long FIRMWARE_MODE_DURATION_MS = 120 * 1000;
 
-/*STATE indexes*/
-size_t UPTIME_ST = -1;
 
+/* SETTINGS indexes */
+
+/* STATE indexes */
+size_t st_MODULE_HOSTNAME = -1;
+size_t st_UPTIME = -1;
+
+void init_settings();
+void init_state();
 void init_wifi();
 void init_ota();
 void init_http_server();
-void init_state();
 
 void handle_state();
 void handle_firmware_update();
@@ -89,10 +95,11 @@ void setup() {
   Serial.begin(115200);
   Serial.println("Init started...");
 
+  init_settings();
+  init_state();
   init_wifi();
   init_ota();
   init_http_server();
-  init_state();
 
   setup_module();
 
@@ -129,6 +136,7 @@ void init_ota() {
   #ifdef MODULE_HOSTNAME
     ArduinoOTA.setHostname(MODULE_HOSTNAME);
   #endif
+  STATE[st_MODULE_HOSTNAME] = ArduinoOTA.getHostname();
   Serial.println("Upload port: " + String(UPLOAD_FIRMWARE_PORT) + ", hostname: " + ArduinoOTA.getHostname());
   
   if (std::strlen(UPLOAD_FIRMWARE_PASSWORD_MD5)) {
@@ -158,9 +166,12 @@ void init_ota() {
   Serial.println("OTA init finished.");
 }
 
+void init_settings() {}
+
 void init_state() {
+  st_MODULE_HOSTNAME = STATE.add("Module host name", "");
   STATE.add("Firmware update", {String(__DATE__) + " " + __TIME__});
-  UPTIME_ST = STATE.add("Uptime", {""});
+  st_UPTIME = STATE.add("Uptime", {""});
 }
 
 void init_http_server() {
@@ -246,7 +257,7 @@ void process_ota_error(ota_error_t error) {
 }
 
 void force_update_state() {
-  STATE[UPTIME_ST] = get_uptime_str();
+  STATE[st_UPTIME] = get_uptime_str();
 
   force_update_state_module();
 }

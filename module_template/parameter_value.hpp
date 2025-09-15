@@ -1,5 +1,7 @@
 /**Contains a class for settins/state varibles of different types**/
 
+#pragma once
+
 class ParameterValue {
 public:
   enum Type { TYPE_INT, TYPE_BOOL, TYPE_STRING, TYPE_NONE };
