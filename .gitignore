@@ -3,4 +3,6 @@ libraries/
 
 modules/**/secrets.hpp
 modules/**/module_template.hpp
+modules/**/parameter_value.hpp
+modules/**/parameters.hpp
 
