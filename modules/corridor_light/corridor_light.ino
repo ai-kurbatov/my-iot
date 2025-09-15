@@ -37,7 +37,10 @@ int NIGHT_MODE_BEGIN_M = 0;
 int NIGHT_MODE_END_H = 8;
 int NIGHT_MODE_END_M = 30;
 // Light stays turned on for this amount of time after a movement being detected
-int LIGHT_TIME_S = 60;
+int LIGHT_TIME_S = 10;
+
+// SETTINGS indexes
+size_t SENSOR_LATENCY_S = -1;
 
 WiFiUDP NTP_UDP;
 NTPClient TIME_CLIENT(NTP_UDP, "pool.ntp.org", TZ_OFFSET_SEC, TIME_UPDATE_INTERVAL_MS);
@@ -74,6 +77,8 @@ void setup_module() {
   pinMode(MAIN_LIGHT_PIN, OUTPUT);
   pinMode(SENSOR_1_PIN, INPUT_PULLUP);
   pinMode(SENSOR_2_PIN, INPUT_PULLUP);
+
+  SENSOR_LATENCY_S = SETTINGS.add("Sensor latency (ms)", 500);
   
   #if DEBUG
     Serial.println(String("Sensor_1,Sensor_2,x\n"));
@@ -85,6 +90,8 @@ void loop_module() {
 
   set_light_state(is_movement_detected());
 }
+
+void force_update_state_module() {}
 
 void init_time_server() {
   TIME_CLIENT.begin();
@@ -107,11 +114,33 @@ void init_http_server() {
 }
 
 bool is_movement_detected() {
-  bool sensor_1 = digitalRead(SENSOR_1_PIN);
-  bool sensor_2 = digitalRead(SENSOR_2_PIN);
+  static unsigned long sensor_1_next_check = 0, sensor_2_next_check = 0;
+
+  const bool sensor_1_input = digitalRead(SENSOR_1_PIN);
+  const bool sensor_2_input = digitalRead(SENSOR_2_PIN);
   #if DEBUG
-    Serial.println(String(sensor_1) + "," + String(sensor_2 * 1.1) + ",0\n");
+    Serial.println(String(sensor_1_input) + "," + String(sensor_2_input * 1.1) + ",0\n");
   #endif
+
+  // Filters out short impulses
+  const unsigned long now = millis();
+  const unsigned long next_check = now + SETTINGS[SENSOR_LATENCY_S].as_int();
+  // First check. Movement detection setting timer
+  if (!sensor_1_next_check && sensor_1_input) sensor_1_next_check = next_check;
+  if (!sensor_2_next_check && sensor_2_input) sensor_2_next_check = next_check;
+  // Second check
+  bool sensor_1 = false, sensor_2 = false;
+  if (sensor_1_next_check && now > sensor_1_next_check) {
+    // Long impulse, real movement detected
+    if (sensor_1_input) sensor_1 = true;
+    // Short impus, probably false positive.
+    // Also sets timer to 0 after long impuls end
+    else sensor_1_next_check = 0;
+  }
+  if (sensor_2_next_check && now > sensor_2_next_check) {
+    if (sensor_2_input) sensor_2 = true;
+    else sensor_2_next_check = 0;
+  }
   return sensor_1 || sensor_2;
 }
 
@@ -226,14 +255,6 @@ String get_uptime_str() {
   const unsigned long hours = now_s / 3600UL % 24UL;
   const unsigned long days = now_s / 86400UL;
   return get_formatted_time(days, hours, minutes, seconds);
-}
-
-String get_formatted_time(int days, int hours, int minutes, int seconds) {
-  String days_s = days > 0 ? days + String(" days ") : String("");
-  String hours_s = hours >= 10 ? String(hours) : "0" + String(hours);
-  String minutes_s = minutes >= 10 ? String(minutes) : "0" + String(minutes);
-  String seconds_s = seconds >= 10 ? String(seconds) : "0" + String(seconds);
-  return days_s + hours_s + String(":") + minutes_s + String(":") + seconds_s;
 }
 
 void handle_set() {

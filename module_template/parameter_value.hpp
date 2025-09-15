@@ -53,6 +53,7 @@ private:
   }
 
   Type type;
+  // TODO: use union instead separate members?
   int intValue;
   bool boolValue;
   String strValue;
