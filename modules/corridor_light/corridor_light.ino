@@ -14,7 +14,7 @@ main light and night light for depending on time of the day.**/
 
 using iot_module::common_utils::check_with_latency;
 
-#define DEBUG 1
+#define DEBUG 0
 
 enum Mode {
   AUTO, // Control light by motion sensors

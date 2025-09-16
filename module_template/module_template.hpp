@@ -19,6 +19,7 @@ Upload your new firmware. DON'T FORGET to add OTA support to the new firmware fo
 
 #include "parameters.hpp"
 #include "secrets.hpp"
+#include "common_utils.hpp"
 
 /**==API==**/
 
@@ -52,9 +53,6 @@ void loop_module();
 // Like current time, value from input pins, etc. 
 void force_update_state_module();
 
-// Some common utility functions
-// Get time as String like "69 days 16:42:34"
-String get_formatted_time(int days, int hours, int minutes, int seconds);
 
 /**==Implementation==**/
 
@@ -268,17 +266,9 @@ String get_uptime_str() {
   const unsigned long minutes = now_s / 60UL % 60UL;
   const unsigned long hours = now_s / 3600UL % 24UL;
   const unsigned long days = now_s / 86400UL;
-  return get_formatted_time(days, hours, minutes, seconds);
+  return iot_module::common_utils::get_formatted_time(days, hours, minutes, seconds);
 }
 
-}
-
-String get_formatted_time(int days, int hours, int minutes, int seconds) {
-  String days_s = days > 0 ? days + String(" days ") : String("");
-  String hours_s = hours >= 10 ? String(hours) : "0" + String(hours);
-  String minutes_s = minutes >= 10 ? String(minutes) : "0" + String(minutes);
-  String seconds_s = seconds >= 10 ? String(seconds) : "0" + String(seconds);
-  return days_s + hours_s + String(":") + minutes_s + String(":") + seconds_s;
 }
 
 /// Don't use setup() in actual module. Use setup_module() instead!

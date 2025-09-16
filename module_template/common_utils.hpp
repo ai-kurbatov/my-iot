@@ -2,8 +2,20 @@
 
 #pragma once
 
-namespace iot_module{
+#include <Arduino.h>
+
+namespace iot_module {
 namespace common_utils {
+/**
+  @brief Get formatted time String like "69 days 16:42:34"
+  @param days a number of days
+  @param hours a number of hours
+  @param minutes a number of mintues
+  @param seconds a number of seconds
+  @returns a formatted time stirng
+**/
+String get_formatted_time(int days, int hours, int minutes, int seconds);
+
 /**
   @brief Checks if sensor input is true. Filters out signals shorter then latency_ms. Should be called periodically for proper latency handling.
   @param sensor_input input signal from sensor, button, etc.

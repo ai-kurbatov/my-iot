@@ -2,10 +2,18 @@
 
 #include "common_utils.hpp"
 
-#include <Arduino.h>
 
 namespace iot_module {
 namespace common_utils {
+String get_formatted_time(int days, int hours, int minutes, int seconds) {
+  String days_s = days > 0 ? days + String(" days ") : String("");
+  String hours_s = hours >= 10 ? String(hours) : "0" + String(hours);
+  String minutes_s = minutes >= 10 ? String(minutes) : "0" + String(minutes);
+  String seconds_s = seconds >= 10 ? String(seconds) : "0" + String(seconds);
+  return days_s + hours_s + String(":") + minutes_s + String(":") + seconds_s;
+}
+
+
 bool check_with_latency(bool sensor_input, unsigned long &next_check_time, unsigned long latency_ms) {
     // Filters out short impulses
   const unsigned long now = millis();
