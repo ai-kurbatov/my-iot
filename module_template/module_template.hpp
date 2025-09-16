@@ -19,7 +19,7 @@ Upload your new firmware. DON'T FORGET to add OTA support to the new firmware fo
 
 #include "parameters.hpp"
 #include "secrets.hpp"
-#include "common_utils.hpp"
+#include "utils.hpp"
 
 /**==API==**/
 
@@ -52,7 +52,6 @@ void loop_module();
 // This is only for the ones that have not been (or cannot be) updated in other places.
 // Like current time, value from input pins, etc. 
 void force_update_state_module();
-
 
 /**==Implementation==**/
 
@@ -266,7 +265,7 @@ String get_uptime_str() {
   const unsigned long minutes = now_s / 60UL % 60UL;
   const unsigned long hours = now_s / 3600UL % 24UL;
   const unsigned long days = now_s / 86400UL;
-  return iot_module::common_utils::get_formatted_time(days, hours, minutes, seconds);
+  return iot_module::utils::get_formatted_time(days, hours, minutes, seconds);
 }
 
 }

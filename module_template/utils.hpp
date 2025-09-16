@@ -5,7 +5,7 @@
 #include <Arduino.h>
 
 namespace iot_module {
-namespace common_utils {
+namespace utils {
 /**
   @brief Get formatted time String like "69 days 16:42:34"
   @param days a number of days

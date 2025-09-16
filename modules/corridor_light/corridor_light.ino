@@ -10,9 +10,9 @@ main light and night light for depending on time of the day.**/
 
 #define MODULE_HOSTNAME "corridor-light"
 #include "module_template.hpp"
-#include "common_utils.hpp"
+#include "utils.hpp"
 
-using iot_module::common_utils::check_with_latency;
+using iot_module::utils::check_with_latency;
 
 #define DEBUG 0
 

@@ -1,10 +1,9 @@
-/** common_utils.hpp implementation **/
+/** utils.hpp implementation **/
 
-#include "common_utils.hpp"
-
+#include "utils.hpp"
 
 namespace iot_module {
-namespace common_utils {
+namespace utils {
 String get_formatted_time(int days, int hours, int minutes, int seconds) {
   String days_s = days > 0 ? days + String(" days ") : String("");
   String hours_s = hours >= 10 ? String(hours) : "0" + String(hours);

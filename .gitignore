@@ -5,6 +5,6 @@ modules/**/secrets.hpp
 modules/**/module_template.hpp
 modules/**/parameter_value.hpp
 modules/**/parameters.hpp
-modules/**/common_utils.hpp
-modules/**/common_utils.cpp
+modules/**/utils.hpp
+modules/**/utils.cpp
 
