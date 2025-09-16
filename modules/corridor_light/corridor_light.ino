@@ -10,6 +10,9 @@ main light and night light for depending on time of the day.**/
 
 #define MODULE_HOSTNAME "corridor-light"
 #include "module_template.hpp"
+#include "common_utils.hpp"
+
+using iot_module::common_utils::check_with_latency;
 
 #define DEBUG 1
 
@@ -105,7 +108,7 @@ void force_update_state_module() {
 
 void init_settings() {
   se_MODE = SETTINGS.add("Mode", Mode::AUTO);
-  se_SENSOR_LATENCY_MS = SETTINGS.add("Sensor latency (ms)", 500);
+  se_SENSOR_LATENCY_MS = SETTINGS.add("Sensor latency (ms)", 500);  // Stores as int! It will overflow on big values
   se_NIGHT_MODE_BEGIN_H = SETTINGS.add("Night mode begin, h", 23);
   se_NIGHT_MODE_BEGIN_M = SETTINGS.add("Night mode begin, m", 0);
   se_NIGHT_MODE_END_H = SETTINGS.add("Night mode end, h", 8);
@@ -154,26 +157,9 @@ bool is_movement_detected() {
   #if DEBUG
     Serial.println(String(sensor_1_input) + "," + String(sensor_2_input * 1.1) + ",0\n");
   #endif
-
-  // Filters out short impulses
-  const unsigned long now = millis();
-  const unsigned long next_check = now + SETTINGS[se_SENSOR_LATENCY_MS].as_int();
-  // First check. Movement detection setting timer
-  if (!sensor_1_next_check && sensor_1_input) sensor_1_next_check = next_check;
-  if (!sensor_2_next_check && sensor_2_input) sensor_2_next_check = next_check;
-  // Second check
-  bool sensor_1 = false, sensor_2 = false;
-  if (sensor_1_next_check && now > sensor_1_next_check) {
-    // Long impulse, real movement detected
-    if (sensor_1_input) sensor_1 = true;
-    // Short impus, probably false positive.
-    // Also sets timer to 0 after long impuls end
-    else sensor_1_next_check = 0;
-  }
-  if (sensor_2_next_check && now > sensor_2_next_check) {
-    if (sensor_2_input) sensor_2 = true;
-    else sensor_2_next_check = 0;
-  }
+  const unsigned long latency_ms = SETTINGS[se_SENSOR_LATENCY_MS].as_int();
+  const bool sensor_1 = check_with_latency(sensor_1_input, sensor_1_next_check, latency_ms);
+  const bool sensor_2 = check_with_latency(sensor_2_input, sensor_2_next_check, latency_ms);
   return sensor_1 || sensor_2;
 }
 
