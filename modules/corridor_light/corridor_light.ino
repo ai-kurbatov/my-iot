@@ -14,7 +14,7 @@ main light and night light for depending on time of the day.**/
 
 using iot_module::utils::check_with_latency;
 
-#define DEBUG 0
+#define DEBUG 1
 
 enum Mode {
   AUTO, // Control light by motion sensors
@@ -31,6 +31,10 @@ const int LED_PIN = D1;
 const int MAIN_LIGHT_PIN = D2;
 const int SENSOR_1_PIN = D5;
 const int SENSOR_2_PIN = D6;
+
+#if DEBUG
+String LOGS = "";
+#endif
 
 /* SETTINGS indexes */
 size_t se_SENSOR_LATENCY_MS = -1;
@@ -53,6 +57,7 @@ size_t st_IS_NIGHT_MODE = -1;
 // Current time string. Updates only on /settings request
 size_t st_TIME = -1;
 
+
 WiFiUDP NTP_UDP;
 NTPClient TIME_CLIENT(NTP_UDP, "pool.ntp.org", TZ_OFFSET_SEC, TIME_UPDATE_INTERVAL_MS);
 
@@ -74,7 +79,7 @@ void set_force_light();
 void handle_root();
 void handle_not_found();
 void handle_reset();
-String get_formatted_time(int days, int hours, int minutes, int seconds);
+void handle_get_logs();
 
 void setup_module() {
   init_settings();
@@ -146,7 +151,12 @@ void init_light() {
 
 void init_http_server() {
   SERVER.on("/", HTTP_GET, handle_root);
+  SERVER.on("/logs", handle_get_logs);
   Serial.println("Module HTTP server init finished.");
+}
+
+String get_formated_millis(unsigned long mil) {
+  return String("") + "."+ mil % 1000;
 }
 
 bool is_movement_detected() {
@@ -156,6 +166,14 @@ bool is_movement_detected() {
   const bool sensor_2_input = digitalRead(SENSOR_2_PIN);
   #if DEBUG
     Serial.println(String(sensor_1_input) + "," + String(sensor_2_input * 1.1) + ",0\n");
+    static bool old_s1 = false, old_s2 = false, old_state = STATE[st_IS_CURRENTLY_TURNED_ON].as_bool();
+    if (old_s1 != sensor_1_input || old_s2 != sensor_2_input || old_state != STATE[st_IS_CURRENTLY_TURNED_ON].as_bool()) {
+      if (!LOGS.isEmpty()) LOGS += ",";
+      LOGS += String("\"") + (module_template_impl::get_uptime_str() + "." + (millis() % 1000UL)) + "\":{\"S1\":" + sensor_1_input + ",\"S2\":" + sensor_2_input + ",\"ST\":" + STATE[st_IS_CURRENTLY_TURNED_ON].as_bool() + "}";
+      old_s1 = sensor_1_input;
+      old_s2 = sensor_2_input;
+      old_state = STATE[st_IS_CURRENTLY_TURNED_ON].as_bool();
+    }
   #endif
   const unsigned long latency_ms = SETTINGS[se_SENSOR_LATENCY_MS].as_int();
   const bool sensor_1 = check_with_latency(sensor_1_input, sensor_1_next_check, latency_ms);
@@ -256,3 +274,10 @@ void handle_root() {
   SERVER.send(200, "text/html", page);
 }
 
+void handle_get_logs() {
+  #if DEBUG
+    String payload = String("{") + LOGS + "}";
+    SERVER.send(200, "application/json", payload);
+    LOGS = "";
+  #endif
+}
