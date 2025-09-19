@@ -24,8 +24,8 @@ enum Mode {
 
 const int NAPT = 1000;
 const int NAPT_PORT = 10;
-const int TZ_OFFSET_SEC = 3 * 60 * 60;
-const unsigned long TIME_UPDATE_INTERVAL_MS = 24 * 60 * 1000;
+constexpr int TZ_OFFSET_SEC = 3 * 60 * 60;
+constexpr unsigned long TIME_UPDATE_INTERVAL_MS = 100 * 24 * 60 * 1000;
 
 const int LED_PIN = D1;
 const int MAIN_LIGHT_PIN = D2;
