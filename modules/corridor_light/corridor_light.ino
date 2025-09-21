@@ -108,7 +108,7 @@ void force_update_state_module() {
 
 void init_settings() {
   se_MODE = SETTINGS.add("Mode", Mode::AUTO);
-  se_SENSOR_LATENCY_MS = SETTINGS.add("Sensor latency (ms)", 500);  // Stores as int! It will overflow on big values
+  se_SENSOR_LATENCY_MS = SETTINGS.add("Sensor latency (ms)", 50);  // Stores as int! It will overflow on big values
   se_NIGHT_MODE_BEGIN_H = SETTINGS.add("Night mode begin, h", 23);
   se_NIGHT_MODE_BEGIN_M = SETTINGS.add("Night mode begin, m", 0);
   se_NIGHT_MODE_END_H = SETTINGS.add("Night mode end, h", 8);
