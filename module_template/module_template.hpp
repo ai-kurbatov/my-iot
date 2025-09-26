@@ -67,7 +67,7 @@ constexpr unsigned long FIRMWARE_MODE_DURATION_MS = 120 * 1000;
 /* SETTINGS indexes */
 
 /* STATE indexes */
-size_t st_MODULE_HOSTNAME = -1;
+size_t st_MODULE_HOSTNAME = -1;  // TODO: replace -1 with MAX
 size_t st_UPTIME = -1;
 
 void init_settings();
