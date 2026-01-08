@@ -115,6 +115,7 @@ void init_wifi() {
   Serial.println("Wi-fi init started...");
 
   WiFi.mode(WIFI_STA);
+  WiFi.setAutoReconnect(true);
   WiFi.begin(WIFI_NAME, WIFI_PASSWORD);
   while (WiFi.waitForConnectResult() != WL_CONNECTED) {
     Serial.println("Wi-fi connection Failed! Rebooting...");
