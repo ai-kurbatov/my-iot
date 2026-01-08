@@ -30,7 +30,7 @@ void setup_module() {
   se_WATERING_DURATION_S = SETTINGS.add("WateringDurationS", 1*60);
 
   pinMode(WATERING_PIN, OUTPUT);
-  digitalWrite(WATERING_PIN, false);
+  digitalWrite(WATERING_PIN, false); // WARNING: May ocassionaly turn on watering device!
   pinMode(WATERING_DEVICE_STATE_PIN, INPUT);
 
   delay(500);
@@ -46,19 +46,15 @@ void force_update_state_module() {
 
 void update_watering_state() {
   const auto now_ms = millis();
-  static unsigned long next_watering_ms = 0;
-  static unsigned long stop_watering_ms = 0;
-  if (next_watering_ms < now_ms) {
-    next_watering_ms = now_ms + SETTINGS[se_WATERING_DELAY_S].as_int() * 1000;
-    stop_watering_ms = now_ms + SETTINGS[se_WATERING_DURATION_S].as_int() * 1000;
-    // Quick fix to not deal with overflow
-    if (next_watering_ms < now_ms || stop_watering_ms < now_ms) {
-      ESP.restart();
-    }
+  const unsigned long watering_delay_ms = SETTINGS[se_WATERING_DELAY_S].as_int() * 1000;
+  static unsigned long previous_watering_start_ms = 0ul - watering_delay_ms; // Turn on watering on startup
+  if (now_ms - previous_watering_start_ms > watering_delay_ms) {
+    previous_watering_start_ms = now_ms;
     set_watering_state(true);
     return;
   }
-  if (stop_watering_ms < now_ms) {
+  const unsigned long watering_duration_ms = SETTINGS[se_WATERING_DURATION_S].as_int() * 1000;
+  if (now_ms - previous_watering_start_ms > watering_duration_ms) {
     set_watering_state(false);
   }
 }
@@ -83,6 +79,7 @@ bool get_watering_device_state() {
 }
 
 void init_vatering_device() {
+  // Turn off watering device if it has been turned on during setup
   if (get_watering_device_state()) {
     STATE[st_IS_ON_WATERING] = true;
     set_watering_state(false);
