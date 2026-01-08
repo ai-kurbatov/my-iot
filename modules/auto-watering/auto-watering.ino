@@ -26,7 +26,7 @@ void init_vatering_device();
 void setup_module() {
   st_IS_ON_WATERING = STATE.add("IsOnWatering", false);
 
-  se_WATERING_DELAY_S = SETTINGS.add("WateringDelayS", 12*60*60);
+  se_WATERING_DELAY_S = SETTINGS.add("WateringDelayS", 3*60*60);
   se_WATERING_DURATION_S = SETTINGS.add("WateringDurationS", 1*60);
 
   pinMode(WATERING_PIN, OUTPUT);
