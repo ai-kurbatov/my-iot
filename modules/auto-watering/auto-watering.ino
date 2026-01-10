@@ -3,16 +3,21 @@
 #define MODULE_HOSTNAME "auto-watering-iot-device"
 
 #include "module_template.hpp"
+#include "utils.hpp"
 
 const auto WATERING_PIN = D6;
 const auto WATERING_DEVICE_STATE_PIN = D7;
 
 // STATE indexes
 size_t st_IS_ON_WATERING = -1;
+size_t st_LAST_WATERING = -1;
 
 // SETTINGS indexes
 size_t se_WATERING_DELAY_S = -1;
 size_t se_WATERING_DURATION_S = -1;
+
+// TODO: add unsigned long type to ParameterValue class, move this value to STATE variable
+unsigned long LAST_WATERING_MS = 0;
 
 // turn on or off watering depanding on time
 void update_watering_state();
@@ -22,11 +27,12 @@ void set_watering_state(bool is_turn_on);
 void update_watering_device_state();
 // is watering device actually on
 bool get_watering_device_state();
-// turn off watering device at the setup
-void init_vatering_device();
+// update last watering timestamp
+void update_last_watering_time();
 
 void setup_module() {
   st_IS_ON_WATERING = STATE.add("IsOnWatering", false);
+  st_LAST_WATERING = STATE.add("LastWatering", "");
 
   se_WATERING_DELAY_S = SETTINGS.add("WateringDelayS", 3*60*60);
   se_WATERING_DURATION_S = SETTINGS.add("WateringDurationS", 1*60);
@@ -34,17 +40,16 @@ void setup_module() {
   pinMode(WATERING_PIN, OUTPUT);
   digitalWrite(WATERING_PIN, false); // WARNING: May ocassionaly turn on watering device!
   pinMode(WATERING_DEVICE_STATE_PIN, INPUT);
-
-  delay(500);
-  init_vatering_device();
 }
 
 void loop_module() {
   update_watering_state();
   update_watering_device_state();
+  update_last_watering_time();
 }
 
 void force_update_state_module() {
+  STATE[st_LAST_WATERING] = iot_module::utils::get_formatted_time(LAST_WATERING_MS);
 }
 
 void update_watering_state() {
@@ -77,14 +82,11 @@ void update_watering_device_state() {
   delay(500);
 }
 
+void update_last_watering_time() {
+  if (get_watering_device_state()) LAST_WATERING_MS = millis();
+}
+
 bool get_watering_device_state() {
   return !digitalRead(WATERING_DEVICE_STATE_PIN);
 }
 
-void init_vatering_device() {
-  // Turn off watering device if it has been turned on during setup
-  if (get_watering_device_state()) {
-    STATE[st_IS_ON_WATERING] = true;
-    set_watering_state(false);
-  }
-}

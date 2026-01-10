@@ -17,6 +17,13 @@ namespace utils {
 String get_formatted_time(int days, int hours, int minutes, int seconds);
 
 /**
+  @brief Get formatted time String like "69 days 16:42:34"
+  @param timestamp_ms timestamp in milliseconds
+  @returns a formatted time stirng
+**/
+String get_formatted_time(unsigned long timestamp_ms);
+
+/**
   @brief Checks if sensor input is true. Filters out signals shorter then latency_ms. Should be called periodically for proper latency handling.
   @param sensor_input input signal from sensor, button, etc.
   @param next_check_time the fuction manages this variable. Store it (as a static variable, global varibale, etc.) and

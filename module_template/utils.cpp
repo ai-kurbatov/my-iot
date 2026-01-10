@@ -13,13 +13,23 @@ String get_formatted_time(int days, int hours, int minutes, int seconds) {
 }
 
 
+String get_formatted_time(unsigned long timestamp_ms) {
+  const unsigned long timestamp_s = timestamp_ms / 1000UL;
+  const unsigned long seconds = timestamp_s % 60UL;
+  const unsigned long minutes = timestamp_s / 60UL % 60UL;
+  const unsigned long hours = timestamp_s / 3600UL % 24UL;
+  const unsigned long days = timestamp_s / 86400UL;
+  return get_formatted_time(days, hours, minutes, seconds);
+}
+
+
 bool check_with_latency(bool sensor_input, unsigned long &next_check_time, unsigned long latency_ms) {
     // Filters out short impulses
   const unsigned long now = millis();
   // First check. Movement detection setting timer
   if (!next_check_time && sensor_input) next_check_time = now + latency_ms;
   // Second check
-  if (next_check_time && now >= next_check_time) {
+  if (next_check_time && now >= next_check_time) { // TODO: replace with substraction to handle overflow!
     // Long impulse, real movement detected
     if (sensor_input) return true;
     // Short impus, probably false positive.

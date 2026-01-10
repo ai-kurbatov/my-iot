@@ -261,12 +261,7 @@ void force_update_state() {
 }
 
 String get_uptime_str() {
-  const unsigned long now_s = millis() / 1000UL;
-  const unsigned long seconds = now_s % 60UL;
-  const unsigned long minutes = now_s / 60UL % 60UL;
-  const unsigned long hours = now_s / 3600UL % 24UL;
-  const unsigned long days = now_s / 86400UL;
-  return iot_module::utils::get_formatted_time(days, hours, minutes, seconds);
+  return iot_module::utils::get_formatted_time(millis());
 }
 
 }
