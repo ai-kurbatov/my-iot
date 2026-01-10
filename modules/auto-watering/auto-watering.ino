@@ -16,8 +16,10 @@ size_t se_WATERING_DURATION_S = -1;
 
 // turn on or off watering depanding on time
 void update_watering_state();
-// turn on or off watering
+// set watering flag
 void set_watering_state(bool is_turn_on);
+// actually turn on or off watering
+void update_watering_device_state();
 // is watering device actually on
 bool get_watering_device_state();
 // turn off watering device at the setup
@@ -39,6 +41,7 @@ void setup_module() {
 
 void loop_module() {
   update_watering_state();
+  update_watering_device_state();
 }
 
 void force_update_state_module() {
@@ -60,18 +63,18 @@ void update_watering_state() {
 }
 
 void set_watering_state(bool is_turn_on) {
-  if (STATE[st_IS_ON_WATERING].as_bool() == is_turn_on)
+  STATE[st_IS_ON_WATERING] = is_turn_on;
+}
+
+void update_watering_device_state() {
+  if (STATE[st_IS_ON_WATERING].as_bool() == get_watering_device_state())
     return;
   
   // Switch like a button press
-  do {
-    digitalWrite(WATERING_PIN, true);
-    delay(50);
-    digitalWrite(WATERING_PIN, false);
-    delay(500);
-  } while (get_watering_device_state() != is_turn_on);
-
-  STATE[st_IS_ON_WATERING] = is_turn_on;
+  digitalWrite(WATERING_PIN, true);
+  delay(50);
+  digitalWrite(WATERING_PIN, false);
+  delay(500);
 }
 
 bool get_watering_device_state() {
